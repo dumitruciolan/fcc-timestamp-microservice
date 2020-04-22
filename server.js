@@ -1,49 +1,53 @@
-// init project & required Node imports
+// add the required Node imports & init project
 const express = require("express"),
-  // enable CORS so that your API is remotely testable by FCC
+  // enable CORS so the API is remotely testable
   cors = require("cors"),
-  // create an express instance
-  app = (module.exports = express());
+  app = express();
 
-// instantiate bodyParser & CORS (some legacy browsers choke on 204)
+// instantiate express & CORS (some legacy browsers choke on 204)
 app.use(cors({ optionSuccessStatus: 200 }));
 app.use(express.static("public"));
 
-app.get("/", function(req, res) {
+// display main HTML page
+app.get("/", (_, res) => {
   res.sendFile(__dirname + "/views/index.html");
 });
 
-// handle empty date scenario
-app.get("/api/timestamp/", (req, res) => {
-  req = new Date();
-  res.json({ unix: req.valueOf(), utc: req.toUTCString() });
-});
-
-// define JSON structure
+// define date file's structure
 const getTimestamp = date => ({
   unix: date.getTime(),
   utc: date.toUTCString()
 });
 
-// handle the other scenarios
-app.get("/api/timestamp/:date_string?", function(req, res) {
+// handle empty date scenario
+app.get("/api/timestamp", (_, res) => {
+  res.json({ unix: Date.now(), utc: new Date().toUTCString() });
+});
+
+// handle non-empty date scenarios
+app.get("/api/timestamp/:date_string", (req, res) => {
   // gets the request data for date
-  let { date_string } = req.params,
-    timestamp;
+  let timestamp = {},
+    { date_string } = req.params;
 
-  // check date format
+  // is date_string a number?
   const date = !isNaN(date_string)
-    ? new Date(parseInt(date_string))
-    : new Date(date_string);
+    ? // then parse it and generate date in ms
+      new Date(parseInt(date_string))
+    : // else, only create a new date in ms
+      new Date(date_string);
 
-  // check if
+  // is date a valid date?
   !isNaN(date.getTime())
-    ? (timestamp = getTimestamp(date))
-    : (timestamp = { unix: null, utc: "Invalid Date" });
+    ? // then format it in the required structure
+      (timestamp = getTimestamp(date))
+    : // otherwise, display invalid date message
+      (timestamp = { error: "Invalid Date" });
 
-  // return the response
+  // JSON format the processed date and return it
   res.json(timestamp);
 });
+
 // start the server & listen for requests :)
 const listener = app.listen(process.env.PORT || 4100, err => {
   if (err) throw err;
